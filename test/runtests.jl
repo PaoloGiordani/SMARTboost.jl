@@ -2,5 +2,6 @@ using SMARTboost
 using Test
 
 @testset "SMARTboost.jl" begin
-    # Write your tests here.
+    @info "Testing example1"
+    include("example1.jl")
 end
