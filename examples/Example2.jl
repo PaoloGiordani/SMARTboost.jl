@@ -18,7 +18,7 @@ paolo.giordani@bi.no
 """
 
 # On one core
-# using SMARTboost
+using SMARTboost
 
 # On multiple cores
 number_workers  = 4  # desired number of workers
