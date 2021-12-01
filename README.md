@@ -2,7 +2,7 @@
 
 [![Build Status](https://github.com/PaoloGiordani/SMARTboost.jl/workflows/CI/badge.svg)](https://github.com/PaoloGiordani/SMARTboost.jl/actions)
 
-A Julia implementation of SMARTboost (Smooth Additive Regression Trees), as described in the paper [SMARTboost: Efficient Boosting of Smooth Additive Regression Trees](https://SSRN/....).
+A Julia implementation of SMARTboost (Smooth Additive Regression Trees), as described in the paper [SMARTboost learning for tabular data](https://SSRN/https://ssrn.com/abstract=3975543).
 
 Currently support only L2 loss, but extensions will be provided soon.
 
