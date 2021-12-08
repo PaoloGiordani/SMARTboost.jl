@@ -14,8 +14,6 @@ Latest:
 
 ```julia-repl
 pkg> add "https://github.com/PaoloGiordani/SMARTboost.jl"
-# or 
-julia> Pkg.add(path="https://github.com/PaoloGiordani/SMARTboost.jl")
 ```
 
 
