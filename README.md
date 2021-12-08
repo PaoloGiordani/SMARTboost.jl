@@ -13,8 +13,11 @@ Input features can be a be `Array{Float64/Float32}` or DataFrame (which is inter
 Latest:
 
 ```julia-repl
-julia> Pkg.add("https://github.com/PaoloGiordani/SMARTboost.jl")
+pkg> add "https://github.com/PaoloGiordani/SMARTboost.jl"
+# or 
+julia> Pkg.add(path="https://github.com/PaoloGiordani/SMARTboost.jl")
 ```
+
 
 ## Parameters (incomplete list, see SMARTparam Documentation for more).
 
