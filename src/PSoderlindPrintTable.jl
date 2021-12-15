@@ -119,7 +119,8 @@ end
 #    printmat(stdout::IO,x...;colNames,rowNames,width,prec,NoPrinting,StringFmt,cell00)
 
 printmat(x...;colNames=[],rowNames=[],width=10,prec=3,NoPrinting=false,StringFmt="",cell00="") =
-    printmat(stdout::IO,x...;colNames=[],rowNames=[],width=10,prec=3,NoPrinting=false,StringFmt="",cell00="")
+        printmat(stdout::IO,x...;colNames=colNames,rowNames=rowNames,width=width,prec=prec,NoPrinting=NoPrinting,StringFmt=StringFmt,cell00=cell00)
+
 
 
 #------------------------------------------------------------------------------
@@ -154,7 +155,7 @@ end
                       #when fh is not supplied: printing to screen
 # Paolo Giordani: Paul's original syntax requires Julia 1.6
 #printlnPs(z...;width=10,prec=3) = printlnPs(stdout::IO,z...;width,prec)
-printlnPs(z...;width=10,prec=3) = printlnPs(stdout::IO,z...;width=10,prec=3)
+printlnPs(z...;width=10,prec=3) = printlnPs(stdout::IO,z...;width=width,prec=prec)
         
 #------------------------------------------------------------------------------
 
