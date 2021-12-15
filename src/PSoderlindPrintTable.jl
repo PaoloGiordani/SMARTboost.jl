@@ -177,6 +177,12 @@ function fmtNumPs(z,width=10,prec=2,justify="right";prefix="",suffix="")
   isa(z,Bool) && (z = convert(Int,z))             #Bool -> Int
 
   if isa(z,AbstractFloat)                         #example: 101.0234, prec=3
+      # modify Paul's code to avoid loading Printf             
+      fmt    = "%$(width).$(prec)f"
+      zRound = round(z,digits=prec)
+      strLR  = fmtNumPsC(fmt,zRound)                #C fallback solution
+   
+    #=            
     if VERSION < v"1.6-"
       fmt    = "%$(width).$(prec)f"
       zRound = round(z,digits=prec)
@@ -185,6 +191,7 @@ function fmtNumPs(z,width=10,prec=2,justify="right";prefix="",suffix="")
       fmt   = Printf.Format("%$(width).$(prec)f")
       strLR = Printf.format(fmt,z)
     end
+    =#            
   elseif isa(z,Nothing)
     strLR = ""
   elseif isa(z,Integer) && prec > 0               #integer followed by (1+prec spaces)
