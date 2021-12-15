@@ -1,84 +1,107 @@
 """
 
-Paul Soderlind printTable and printmat: functions for nicer table and matrix printing.
+Paul Soderlind printTable, printmat, printlnPs: functions for nicer table and matrix printing.
 
-Downloaded from https://github.com/PaulSoderlind/JuliaTutorial, June 2020
-
-
-printTable
-printmat
-printlnPs
-printmat2
-
+Downloaded from https://github.com/PaulSoderlind/JuliaTutorial, December 2021
 
 """
 
 using Dates
 
-
+#------------------------------------------------------------------------------
 """
-    printTable([fh::IO],x,colNames=[],rowNames=[];
-               width=10,prec=3,NoPrinting=false,htmlQ=false,cell00="")
-Print formatted table with row names (1st column) column names (1st row), and data matrix (the rest).
+    printmat([fh::IO],x...;colNames=[],rowNames=[],
+             width=10,prec=3,NoPrinting=false,StringFmt="",cell00="")
+Print all elements of a matrix (or several) with predefined formatting. It can also handle
+OffsetArrays. StringFmt = "csv" prints using a csv format.
 # Input
-- `fh::IO`:           (optional) file handle. If not supplied, prints to screen
-- `x::Array`:         string, date or array to print
-- `width::Int`:       (keyword) scalar, width of printed cells. [10]
-- `prec::Int`:        (keyword) scalar, precision of printed cells. [3]
-- `NoPrinting::Bool`: (keyword) bool, true: no printing, just return formatted string [false]
-- `hmtlQ::Bool`:      (keyword) bool, true: format as htmlQ <td>cells</td> [false]
-- `cell00::String`:   (keyword) string, for row 0, column 0
+- `fh::IO`:            (optional) file handle. If not supplied, prints to screen
+- `x::Array(s)`:       (of numbers, dates, strings, ...) to print
+- `colNames::Array`:   of strings with column headers
+- `rowNames::Array`:   of strings with row labels
+- `width::Int`:        (keyword) scalar, minimum width of printed cells
+- `prec::Int`:         (keyword) scalar, precision of printed cells
+- `NoPrinting::Bool`:  (keyword) bool, true: no printing, just return formatted string [false]
+- `StringFmt::String`: (keyword) string, "", "csv"
+- `cell00::String`:    (keyword) string, for row 0, column 0
 # Output
-- `str::String`:      (if NoPrinting) string, (otherwise nothing)
-# Example
+- str         (if NoPrinting) string, (otherwise nothing)
+# Examples
 ```
-xA = [1 "ab" "abc"; "ccc" 3.14 missing]
-printTable(xA,colNames,["1";"4"],width=12,prec=2)
+x = [11 12;21 22]
+printmat(x)
 ```
-# Uses
-- printmat
+```
+x = [1 "ab"; Date(2018,10,7) 3.14]
+printmat(x,width=20,colNames=["col 1","col 2"])
+```
+```
+printmat([11,12],[21,22])
+```
+Can also call as
+```
+opt = Dict(:rowNames=>["1";"4"],:width=>10,:prec=>3,:NoPrinting=>false,:StringFmt=>"")
+printmat(x;colNames=["a","b"],opt...)     #notice ; and ...
+```
+(not all keywords are needed)
+# Requires
+- fmtNumPs
+# Notice
+- The prefixN and suffixN could potentially be made function inputs. This would allow
+a fairly flexible way to format tables.
+Paul.Soderlind@unisg.ch
 """
-function printTable(fh::IO,x,colNames=[],rowNames=[];
-                    width=10,prec=3,NoPrinting=false,htmlQ=false,cell00="")
+function printmat(fh::IO,x...;colNames=[],rowNames=[],
+                  width=10,prec=3,NoPrinting=false,StringFmt="",cell00="")
 
-  isempty(x) && return nothing                        #do nothing is isempty(x)
+  isempty(x) && return nothing                         #do nothing is isempty(x)
+
+  typeTestQ = any(!=(eltype(x[1])),[eltype(z) for z in x])  #test if eltype(x[i]) differs
+  if typeTestQ                                      #create matrix from tuple created by x...
+    x = hcat(Matrix{Any}(hcat(x[1])),x[2:end]...)   #preserving types of x[i]
+  else
+    x = hcat(x...)
+  end
 
   (m,n) = (size(x,1),size(x,2))
 
-  if isempty(rowNames)                                 #create row names "r1"
-    rowNames = [string("r",i) for i = 1:m]
-  end
-  if isempty(colNames)                                 #create column names "c1"
-    colNames = [string("c",i) for i = 1:n]
-  end
+  (length(rowNames) == 1 < m) && (rowNames = [string(rowNames[1],i) for i = 1:m])  #"ri"
+  (length(colNames) == 1 < n) && (colNames = [string(colNames[1],i) for i = 1:n])  #"ci"
 
-  rNamesWidth = maximum([length(rowNames[i]) for i = 1:length(rowNames)])  #max length of rowNames
-  rNamesWidth = max(rNamesWidth,length(cell00))
-
-  if htmlQ                                             #print column names
-    cNamesStr = string("<tr><th>",lpad(cell00,rNamesWidth),"</th>")
-    for i = 1:n
-      cNamesStr = string(cNamesStr,"<th>",lpad(colNames[i],width),"</th>")
-    end
-    cNamesStr = string(cNamesStr,"</tr>")
+  if StringFmt == "csv"
+    (prefixN,suffixN)   = (fill("",n),vcat(fill(",",n-1),""))  #prefix and suffix for column 1:n
+    (prefixC0,suffixC0) = ("",",")                             #prefix and suffix for column 0
   else
-    cNamesStr = lpad(cell00,rNamesWidth)                 #cell 0,0
-    for i = 1:n                                          #create string
-      cNamesStr = string(cNamesStr,lpad(colNames[i],width))
-    end
+    (prefixN,suffixN) = (fill("",n),fill("",n))
+    (prefixC0,suffixC0) = ("","")
   end
 
-  xStr  = printmat(fh,x,width=width,prec=prec,NoPrinting=true,htmlQ=htmlQ)   #body of table, one long string
-  xStrV = split(xStr,"\n")                       #vector of strings (one per row of x)
+  if length(rowNames) == 0                         #width of column 0 (cell00 and rowNames)
+    col0Width = 0
+  else
+    col0Width = maximum(length,vcat(cell00,rowNames)) + length(prefixC0) + length(suffixC0)
+  end
+
+  colWidth = [width + length(prefixN[j]) + length(suffixN[j]) for j=1:n]  #widths of column 1:n
 
   iob = IOBuffer()
-  write(iob,cNamesStr,"\n")
-  for i = 1:m                           #loop over rows in x, print rowNames[i] and x[i,:]
-    if htmlQ
-      write(iob,"<tr><td><b>",rpad(rowNames[i],rNamesWidth),"</td></b>",xStrV[i],"</tr> \n")
-    else
-      write(iob,rpad(rowNames[i],rNamesWidth),xStrV[i],"\n")
+
+  if !isempty(colNames)                                #print (cell00,colNames), if any
+    !isempty(cell00) ?  txt0 = string(prefixC0,cell00,suffixC0) : txt0 = ""
+    print(iob,rpad(txt0,col0Width))
+    for j = 1:n                                #loop over columns
+      print(iob,lpad(string(prefixN[j],colNames[j],suffixN[j]),colWidth[j]))
     end
+    print(iob,"\n")
+  end
+                                                       #print rowNames and x
+  (i0,j0) = (1 - first(axes(x,1)),1 - first(axes(x,2)))   #i+i0,j+j0 give traditional indices
+  for i in axes(x,1)                           #loop over rows
+    !isempty(rowNames) && print(iob,rpad(string(prefixC0,rowNames[i+i0],suffixC0),col0Width))
+    for j in axes(x,2)                         #loop over columns
+      print(iob,fmtNumPs(x[i,j],width,prec,"right",prefix=prefixN[j+j0],suffix=suffixN[j+j0]))
+    end
+    print(iob,"\n")
   end
   str = String(take!(iob))
 
@@ -91,141 +114,14 @@ function printTable(fh::IO,x,colNames=[],rowNames=[];
 
 end
                         #when fh is not supplied: printing to screen
-printTable(x,colNames=[],rowNames=[];width=10,prec=3,NoPrinting=false,htmlQ=false,cell00="") =
-printTable(stdout::IO,x,colNames,rowNames,
-                      width=width,prec=prec,NoPrinting=NoPrinting,htmlQ=htmlQ,cell00=cell00)
-#------------------------------------------------------------------------------
+# Paolo Giordani: Paul's original syntax requires Julia 1.6
+#printmat(x...;colNames=[],rowNames=[],width=10,prec=3,NoPrinting=false,StringFmt="",cell00="") =
+#    printmat(stdout::IO,x...;colNames,rowNames,width,prec,NoPrinting,StringFmt,cell00)
+
+printmat(x...;colNames=[],rowNames=[],width=10,prec=3,NoPrinting=false,StringFmt="",cell00="") =
+    printmat(stdout::IO,x...;colNames=colNames,rowNames=rowNames,width=width,prec=prec,NoPrinting=NoPrinting,StringFmt=StringFmt,cell00=cell00)
 
 
-#------------------------------------------------------------------------------
-"""
-    printTable2
-Call on printTable2 twice: to print to screen and then to an open file (IOStream)
-"""
-function printTable2(fh,x,colNames=[],rowNames=[];width=10,prec=3,NoPrinting=false,htmlQ=false,cell00="")
-  printTable(x,colNames,rowNames,width=width,prec=prec,NoPrinting=NoPrinting,htmlQ=htmlQ,cell00=cell00)      #to screen
-  if isa(fh,IOStream) && isopen(fh)
-    printTable(fh,x,colNames,rowNames,width=width,prec=prec,NoPrinting=NoPrinting,htmlQ=htmlQ,cell00=cell00) #to file
-  end
-end
-#------------------------------------------------------------------------------
-
-
-
-
-
-
-
-#------------------------------------------------------------------------------
-"""
-    printmat([fh::IO],x;width=10,prec=3,NoPrinting=false,htmlQ=false)
-Print all elements of matrix with predefined formatting.
-# Input
-- `fh::IO`:           (optional) file handle. If not supplied, prints to screen
-- `x::Array`:         string, date or array to print
-- `width::Int`:       (keyword) scalar, width of printed cells. [10]
-- `prec::Int`:        (keyword) scalar, precision of printed cells. [3]
-- `NoPrinting::Bool`: (keyword) bool, true: no printing, just return formatted string [false]
-- `hmtlQ::Bool`:      (keyword) bool, true: format as htmlQ <td>cells</td> [false]
-# Output
-- str         (if NoPrinting) string, (otherwise nothing)
-# Examples. Try printing the following arrays:
-- x = [11 12;21 22]
-- x = Any[1 "ab"; Date(2018,10,7) 3.14]
-# Uses
-- fmtNumPs
-# To do
-- use Dict() for the options, width etc?
-Paul.Soderlind@unisg.ch
-"""
-function printmat(fh::IO,x;width=10,prec=3,NoPrinting=false,htmlQ=false)
-
-  if isa(x,Union{String,Date,DateTime,Missing})  #eg. a single Date
-    str = string(lpad(x,width),"\n")
-    if NoPrinting
-      return str
-    else
-      print(fh,str,"\n")
-      return nothing
-    end
-  elseif isa(x,Nothing)
-    return nothing
-  end
-
-  if ndims(x) > 2
-    @warn("more than 2 dimensions")
-    return nothing
-  end
-
-  (m,n) = (size(x,1),size(x,2))
-
-  iob = IOBuffer()
-  for i = 1:m                #loop over lines
-    for j = 1:n                #loop over columns
-      if isa(x[i,j],AbstractFloat)        #Float
-        write(iob,fmtNumPs(x[i,j],width,prec,"right",htmlQ))
-      elseif isa(x[i,j],Bool)             #Bool, BitArrays
-        htmlQ ? write(iob,"<td>",lpad(x[i,j]+0,width),"</td>") : write(iob,lpad(x[i,j]+0,width))
-      elseif isa(x[i,j],Nothing)          #Nothing
-        htmlQ ? write(iob,"<td>",lpad("",width),"</td>") : write(iob,lpad("",width))
-      elseif isa(x[i,j],String)           #String, left justified
-        htmlQ ? write(iob,"<td>",rpad(x[i,j],width),"</td>") : write(iob,rpad(x[i,j],width))
-      else                                #other types (Integer,Missing,Date,...)
-        htmlQ ? write(iob,"<td>",lpad(x[i,j],width),"</td>") : write(iob,lpad(x[i,j],width))
-      end
-    end
-    write(iob,"\n")            #newline
-  end
-  str = String(take!(iob))
-
-  if NoPrinting                              #no printing, just return str
-    return str
-  else                                       #print, return nothing
-    print(fh,str,"\n")
-    return nothing
-  end
-
-end
-                  #when fh is not supplied: printing to screen
-printmat(x;width=10,prec=3,NoPrinting=false,htmlQ=false) = printmat(stdout::IO,
-         x,width=width,prec=prec,NoPrinting=NoPrinting,htmlQ=htmlQ)
-#------------------------------------------------------------------------------
-
-
-#------------------------------------------------------------------------------
-"""
-    fmtNumPs(z,width=10,prec=2,justify="right",htmlQ=false)
-Formats a scalar and creates a string of it.
-# Remark
-The Formatting.jl package provides more elegant solutions:
-fmt  = FormatSpec(string(">",width,".",prec,"f"))   #right justified, else "<"
-fmt  = FormatSpec(string(">",wid,"d"))              #for Int
-str  = Formatting.fmt(fmt1,z))
-"""
-function fmtNumPs(z,width=10,prec=2,justify="right",htmlQ=false)
-  if prec > 0                        #if decimal number
-    z   = round(z,digits=prec)       #101.23
-    str = split(string(z),'.')
-    if length(str) > 1
-      strR  = string(".",rpad(str[2],prec,"0"))   #.23
-      strLR = string(str[1],strR)                 #"101" * ".23"
-    else                                          #eg. NaN, missing
-      strLR = string(z)
-    end
-  else
-    if typeof(z) <: AbstractFloat                  #Floats
-      z = round(Int,z)
-    end
-    strLR = string(z)
-  end
-  if justify == "left"
-    strLR = rpad(strLR,width)
-  else
-    strLR = lpad(strLR,width)
-  end
-  htmlQ && (strLR = string("<td>",strLR,"</td>"))
-  return strLR
-end
 #------------------------------------------------------------------------------
 
 
@@ -241,22 +137,14 @@ Paul.Soderlind@unisg.ch
 function printlnPs(fh::IO,z...;width=10,prec=3)
 
   for x in z                              #loop over inputs in z...
-    if isa(x,Union{String,Date,DateTime,Missing})
-      print(fh,lpad(x,width))
-    elseif isa(x,Nothing)
-      print(fh,"")
-    else                                         #other types
+    if isa(x,AbstractArray)
       iob = IOBuffer()
       for i = 1:length(x)
-        if isa(x[i],AbstractFloat)               #Float
-          write(iob,fmtNumPs(x[i],width,prec,"right"))
-        elseif isa(x[i],Nothing)                 #Nothing
-          write(iob,lpad("",width))
-        else                                     #Integer, etc
-          write(iob,lpad(x[i],width))
-        end
+        print(iob,fmtNumPs(x[i],width,prec,"right"))
       end
       print(fh,String(take!(iob)))
+    else
+      print(fh,fmtNumPs(x,width,prec,"right"))
     end
   end
 
@@ -264,34 +152,75 @@ function printlnPs(fh::IO,z...;width=10,prec=3)
 
 end
                       #when fh is not supplied: printing to screen
-printlnPs(z...;width=10,prec=3) = printlnPs(stdout::IO,z...,width=width,prec=prec)
+# Paolo Giordani: Paul's original syntax requires Julia 1.6
+#printlnPs(z...;width=10,prec=3) = printlnPs(stdout::IO,z...;width,prec)
+printlnPs(z...;width=10,prec=3) = printlnPs(stdout::IO,z...;width=width,prec=prec)
+
 #------------------------------------------------------------------------------
 
 
 #------------------------------------------------------------------------------
 """
-    println2Ps
-Call on printlnPs twice: to print to screen and then to an open file (IOStream)
+    fmtNumPs(z,width=10,prec=2,justify="right";prefix="",suffix="")
+Create a formatted string of a float (eg, "%10.4f"), nothing (""),
+while other values are passed through. Strings are right (or left) justified
+and can optionally be given prefix and suffix (eg, ",")
+# Notice
+- With prec > 0 and isa(z,Integer), then the string is padded with 1+prec spaces
+to align with the printing of floats with the same prec.
+# Requires
+- Printf (for 1.6-), fmtNumPsC (for < 1.6)
 """
-function println2Ps(fh::IO,z...;width=10,prec=3)
-  printlnPs(z...,width=width,prec=prec)              #to screen
-  if isa(fh,IOStream) && isopen(fh)
-    printlnPs(fh::IO,z...,width=width,prec=prec)     #to file
+function fmtNumPs(z,width=10,prec=2,justify="right";prefix="",suffix="")
+
+  isa(z,Bool) && (z = convert(Int,z))             #Bool -> Int
+
+  if isa(z,AbstractFloat)                         #example: 101.0234, prec=3
+    if VERSION < v"1.6-"
+      fmt    = "%$(width).$(prec)f"
+      zRound = round(z,digits=prec)
+      strLR  = fmtNumPsC(fmt,zRound)                #C fallback solution
+    else
+      fmt   = Printf.Format("%$(width).$(prec)f")
+      strLR = Printf.format(fmt,z)
+    end
+  elseif isa(z,Nothing)
+    strLR = ""
+  elseif isa(z,Integer) && prec > 0               #integer followed by (1+prec spaces)
+    strLR = string(z," "^(1+prec))
+  else                                            #Int, String, Date, Missing, etc
+    strLR = string(z)
   end
+
+  strLR = string(prefix,strLR,suffix)
+
+  if justify == "left"                            #justification
+    strLR = rpad(strLR,width+length(prefix)+length(suffix))
+  else
+    strLR = lpad(strLR,width+length(prefix)+length(suffix))
+  end
+
+  return strLR
+
 end
 #------------------------------------------------------------------------------
 
 
 #------------------------------------------------------------------------------
 """
-    printmat2
-Call on printmat twice: to print to screen and then to an open file (IOStream)
+    fmtNumPsC(fmt,z)
+c fallback solution for formatting of floating point number. Used if VERSION < v"1.6-"
 """
-function printmat2(fh,x;width=10,prec=3,NoPrinting=false,htmlQ=false)
-  printmat(x,width=width,prec=prec,NoPrinting=NoPrinting,htmlQ=htmlQ)       #to screen
-  if isa(fh,IOStream) && isopen(fh)
-    printmat(fh,x,width=width,prec=prec,NoPrinting=NoPrinting,htmlQ=htmlQ)  #to file
+function fmtNumPsC(fmt,z)                           #c fallback solution
+  if ismissing(z) || isnan(z) || isinf(z)    #asprintf does not work for these cases
+    str = string(z)
+  else
+    strp = Ref{Ptr{Cchar}}(0)
+    len = ccall(:asprintf,Cint,(Ptr{Ptr{Cchar}},Cstring,Cdouble...),strp,fmt,z)
+    str = unsafe_string(strp[],len)
+    Libc.free(strp[])
   end
+  return str
 end
 #------------------------------------------------------------------------------
 
