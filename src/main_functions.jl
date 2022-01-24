@@ -175,6 +175,7 @@ function SMARTfit( data::SMARTdata, param::SMARTparam;paramfield::Symbol = :dept
 
     # Replace with copying only the field value. Then re-set it in the end
     fieldvalue0           = getfield(param,paramfield)
+    cv_grid               = typeof(fieldvalue0).(cv_grid)  # ensure cv_grid is of the correct type
 
     treesize, lossgrid    = Array{I}(undef,length(cv_grid)), fill(T(Inf),length(cv_grid))
     meanloss_a,stdeloss_a = Array{Array{T}}(undef,length(cv_grid)), Array{Array{T}}(undef,length(cv_grid))
@@ -192,7 +193,7 @@ function SMARTfit( data::SMARTdata, param::SMARTparam;paramfield::Symbol = :dept
         SMARTtrees_a[i]               = SMARTtrees1st
         indtest_a                     = indtest    # same for all i
 
-        if stopwhenlossup && i>1 && minloss_a[i]>minloss_a[i-1]; break; end;
+        if stopwhenlossup && i>1 && meanloss_a[i]>meanloss_a[i-1]; break; end;
 
     end
 
