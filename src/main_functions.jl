@@ -173,7 +173,7 @@ function SMARTfit( data::SMARTdata, param::SMARTparam;paramfield::Symbol = :dept
         cv_grid = [param.depth]
     end
 
-    # Replace with copying only the field value. Then re-set it in the end
+    param0                = deepcopy(param)
     fieldvalue0           = getfield(param,paramfield)
     cv_grid               = typeof(fieldvalue0).(cv_grid)  # ensure cv_grid is of the correct type
 
@@ -185,6 +185,7 @@ function SMARTfit( data::SMARTdata, param::SMARTparam;paramfield::Symbol = :dept
 
     for (i,fieldvalue) in enumerate(cv_grid)
 
+        param = deepcopy(param0)
         setfield!(param, Symbol(paramfield), fieldvalue ) # Symbol() is redundant since paramfield is a symbol; needed only if paramfiels is a string
         ntrees,loss,meanloss,stdeloss,SMARTtrees1st,indtest = SMARTsequentialcv( data, param, lossf = lossf)
 
@@ -207,6 +208,7 @@ function SMARTfit( data::SMARTdata, param::SMARTparam;paramfield::Symbol = :dept
 
     # Having selected best parameters by CV, fit again on the full sample (unlss param.nfold=1 and nofullsample=true)
     if nofullsample==false || param.nfold>1
+        param = deepcopy(param0)
         param.ntrees   = ntrees
         if typeof(bestvalue)<:AbstractFloat; Tf = T; elseif typeof(bestvalue)<:Int; Tf = I; else; Tf = typeof(bestvalue); end;
         setfield!(param, Symbol(paramfield), Tf(bestvalue) )
@@ -215,7 +217,7 @@ function SMARTfit( data::SMARTdata, param::SMARTparam;paramfield::Symbol = :dept
         SMARTtrees = deepcopy(SMARTtreesCV)
     end
 
-    param  = setfield!(param, Symbol(paramfield), fieldvalue0 )
+    param = deepcopy(param0)
 
     return ( indtest = indtest_a, bestvalue=bestvalue,ntrees=ntrees,loss=loss,meanloss=meanloss,stdeloss=stdeloss,lossgrid=lossgrid,SMARTtrees=SMARTtrees)
 
