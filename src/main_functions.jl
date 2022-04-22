@@ -49,6 +49,13 @@ function SMARTloglikdivide(df::DataFrame,y_symbol::Symbol,date_symbol::Symbol; o
     end
 
     loglikdivide  = ssc/sum(y.^2)   # roughly accounts for cross-correlation as in clustered standard errors.
+    
+    if loglikdivide<0.9
+      @warn "loglikdivide is calculated to be $loglikdivide (excluding any overlap). Numbers smaller than one imply negative cross-correlation, perhaps induced by output transformation (e.g. from y to rank(y)).
+      loglikvidide WILL BE SET TO 1.0 by default. If the negative cross-correlation is genuine, the original value of $loglikdivide can be used, which would imply weaker priors."
+      loglikdivide = 1.0
+    end
+
     loglikdivide  = loglikdivide*( 1 + overlap/2 ) # roughly accounts for auto-correlation induced by overlapping, e.g. y(t) = p(t+h) - p(t)
     effective_sample_size = length(y)/loglikdivide
 
