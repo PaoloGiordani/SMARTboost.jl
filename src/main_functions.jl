@@ -25,8 +25,8 @@ by overlapping observation when y(t) = Y(t+horizon) - Y(t).
 
 # Inputs
 - `df::DataFrame`        dataframe including y and dates
-- `y_symbol::Symbol`     symbol of the dependent variable in the dataframe
-- `date_symbol::Symbol`  symbol of date column in the dataframe
+- `y_symbol::Symbol`     symbol or string of the dependent variable in the dataframe
+- `date_symbol::Symbol`  symbol or string of date column in the dataframe
 - `overlap::Int`         (keyword) [0] horizon = number of overlaps + 1
 
 # Output
@@ -38,8 +38,10 @@ by overlapping observation when y(t) = Y(t+horizon) - Y(t).
     param   =  SMARTparam(loglikdivide=lld)
 
 """
-function SMARTloglikdivide(df::DataFrame,y_symbol::Symbol,date_symbol::Symbol; overlap::Int = 0)
+function SMARTloglikdivide(df::DataFrame,y_symbol,date_symbol,overlap = 0)
 
+    overlap = Int(overlap); y_symbol = Symbol(y_symbol); date_symbol = Symbol(date_symbol)  # required by R wrapper
+    
     dates             = unique(df.date)
     y                 = df[:,y_symbol] .- mean(df[:,y_symbol])
     ssc       = 0.0
@@ -170,9 +172,11 @@ in param. Default cross-validates only the number of trees (ntrees should not be
     output = SMARTfit(data,param;paramfield=:depth,cv_grid=[1,2,3,4],lossf=:mae)
     output = SMARTfit(data,param;paramfield=:lambda,cv_grid=[0.02,0.2])
 """
-function SMARTfit( data::SMARTdata, param::SMARTparam;paramfield::Symbol = :depth, cv_grid = [],
-    lossf::Symbol = :default, nofullsample::Bool = false, stopwhenlossup::Bool=false )
+function SMARTfit( data::SMARTdata, param::SMARTparam;paramfield = :depth, cv_grid = [],
+    lossf = :default, nofullsample::Bool = false, stopwhenlossup::Bool=false )
 
+    paramfield = Symbol(paramfield); lossf = Symbol(lossf)  # required by R wrapper
+    
     T = typeof(param.varμ)
     I = typeof(param.nfold)
 
@@ -300,6 +304,7 @@ For feature i, computes f(x_i) for x_i between q1st and 1-q1st quantile, with al
 """
 function SMARTpartialplot(data::SMARTdata,SMARTtrees::SMARTboostTrees,features::Vector{Int64};other_xs::Vector =[],q1st=0.01,npoints = 1000)
 
+    npoints = Int(npoints)
     T = typeof(SMARTtrees.param.lambda)
 
     if length(other_xs)==0
@@ -355,6 +360,8 @@ APPROXIMATE Computation of marginal effects using NUMERICAL derivatives.
 
 """
 function SMARTmarginaleffect(data::SMARTdata,SMARTtrees::SMARTboostTrees,features::Vector{Int64};other_xs::Vector =[],q1st=0.01,npoints = 50)
+
+   npoints = Int(npoints)
 
     # compute a numerical derivative
     q,pdp   = SMARTpartialplot(data,SMARTtrees,features,other_xs = other_xs,q1st = q1st,npoints = npoints+2)
