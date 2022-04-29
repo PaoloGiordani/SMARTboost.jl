@@ -359,9 +359,10 @@ APPROXIMATE Computation of marginal effects using NUMERICAL derivatives.
     q,pdp  = SMARTmarginaleffect(data,output.SMARTtrees,sortedindx[1,2],q1st=0.001)
 
 """
-function SMARTmarginaleffect(data::SMARTdata,SMARTtrees::SMARTboostTrees,features::Vector{Int64};other_xs::Vector =[],q1st=0.01,npoints = 50)
+function SMARTmarginaleffect(data::SMARTdata,SMARTtrees::SMARTboostTrees,features;other_xs::Vector =[],q1st=0.01,npoints = 50)
 
-   npoints = Int(npoints)
+    npoints = Int(npoints)
+    features = Int.(features)
 
     # compute a numerical derivative
     q,pdp   = SMARTpartialplot(data,SMARTtrees,features,other_xs = other_xs,q1st = q1st,npoints = npoints+2)
