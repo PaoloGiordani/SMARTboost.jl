@@ -166,17 +166,24 @@ function SMARTparam(;
     loglikdivide = 1.0,   # the log-likelhood is divided by this scalar. Used to improve inference when observations are correlated.
     overlap = 0)
 
-    @assert(doflnτ>2.0, " doflnτ must be greater than 2.0 (for variance to be defined) ")
-    @assert(0.0 <= R2p < 0.99, " R2p must be between 0.0 and 0.99 ")
-    @assert(1e-20 < xtolOptim, "xtolOptim must be positive ")
-    if depth>6; @warn "Depth larger than six is slow, particularly with few workers. Is it really needed? Is CV loss decreasing with depth all the way to $(depth-1)?"; end
+    I = typeof(1)
+    
+    @assert(doflnτ>T(2), " doflnτ must be greater than 2.0 (for variance to be defined) ")
+    @assert(T(0) <= R2p < T(0.99), " R2p must be between 0.0 and 0.99 ")
+    @assert(T(1e-20) < xtolOptim, "xtolOptim must be positive ")
+    if depth>I(5); @warn "Depth larger than five is slow, particularly with few workers, and occasionally unstable (NaN outcomes). Is it really needed? Is CV loss decreasing with depth all the way to $(depth-1)?"; end
 
-    # enforce nfold = 1 if sharevalidation is integer
-    typeof(sharevalidation)<:AbstractFloat ? sharevalidation = T(sharevalidation) : nfold = 1
+    # The following works even if sharevalidation is a Float which is meant as an integer (e.g. in R wrapper)
+    if T(sharevalidation)==T(round(sharevalidation))  # integer
+        sharevalidation=I(sharevalidation)
+        nfold = I(1)
+    else
+        sharevalidation = T(sharevalidation)
+    end
 
-    param = SMARTparam(loss,T.(coeff),verbose,randomizecv,nfold,sharevalidation,T(stderulestop),stopwhenlossup,T(lambda),depth,sigmoid,
-        T(meanlnτ),T(varlnτ),T(doflnτ),T(varμ),T(dofμ),T(subsamplesharevs),subsamplefinalbeta,T(subsampleshare_columns),μgridpoints,τgridpoints,refineOptimGrid,T(xtolOptim),optimizevs,sharptree,ntrees,T(R2p),p0,T(loglikdivide),overlap )
-
+    param = SMARTparam( loss,T.(coeff),verbose,randomizecv,I(nfold),sharevalidation,T(stderulestop),stopwhenlossup,T(lambda),I(depth),sigmoid,
+        T(meanlnτ),T(varlnτ),T(doflnτ),T(varμ),T(dofμ),T(subsamplesharevs),subsamplefinalbeta,T(subsampleshare_columns),I(μgridpoints),I(τgridpoints),refineOptimGrid,T(xtolOptim),optimizevs,sharptree,I(ntrees),T(R2p),I(p0),T(loglikdivide),I(overlap) )
+    
     return param
 end
 
