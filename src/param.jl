@@ -181,7 +181,7 @@ function SMARTparam(;
         sharevalidation = T(sharevalidation)
     end
 
-    param = SMARTparam( loss,T.(coeff),verbose,randomizecv,I(nfold),sharevalidation,T(stderulestop),stopwhenlossup,T(lambda),I(depth),sigmoid,
+    param = SMARTparam( loss,T.(coeff),Symbol(verbose),randomizecv,I(nfold),T(sharevalidation),T(stderulestop),stopwhenlossup,T(lambda),I(depth),Symbol(sigmoid),
         T(meanlnτ),T(varlnτ),T(doflnτ),T(varμ),T(dofμ),T(subsamplesharevs),subsamplefinalbeta,T(subsampleshare_columns),I(μgridpoints),I(τgridpoints),refineOptimGrid,T(xtolOptim),optimizevs,sharptree,I(ntrees),T(R2p),I(p0),T(loglikdivide),I(overlap) )
     
     return param
