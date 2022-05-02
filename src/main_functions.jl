@@ -38,7 +38,7 @@ by overlapping observation when y(t) = Y(t+horizon) - Y(t).
     param   =  SMARTparam(loglikdivide=lld)
 
 """
-function SMARTloglikdivide(df::DataFrame,y_symbol,date_symbol,overlap = 0)
+function SMARTloglikdivide(df::DataFrame,y_symbol,date_symbol;overlap = 0)
 
     overlap = Int(overlap); y_symbol = Symbol(y_symbol); date_symbol = Symbol(date_symbol)  # required by R wrapper
     
@@ -91,7 +91,7 @@ by overlapping observation when y(t) = Y(t+horizon) - Y(t).
     param  =  SMARTparam(loglikdivide=lld)
 
 """
-function SMARTloglikdivide(y::Vector,date::Vector,overlap = 0)
+function SMARTloglikdivide(y::Vector,date::Vector;overlap = 0)
 
     overlap = Int(overlap)
 
