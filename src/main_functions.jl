@@ -67,6 +67,57 @@ end
 
 
 """
+    SMARTloglikdivide(y,date;overlap=0)
+
+This method is R compatible
+
+Suggests a value for param.loglikdivide (where param::SMARTparam). sample size/loglikedivide = effective sample size.
+The only effect of loglikdivide in SMARTboost is to calibrate the strength of the prior in relation to the likelihood evidence.
+The value obtained from this function can also be used as the starting value in a cross-validation search.
+Accounts (roughly) for cross-sectional correlation using a clustered standard errors approach, and for serial correlation induced
+by overlapping observation when y(t) = Y(t+horizon) - Y(t).
+
+# Inputs
+- `y:Vector`       vector of dependent variable
+- `date::Vector`   vector of dates
+- `overlap::Int`   (keyword) [0] horizon = number of overlaps + 1
+
+# Output
+- `loglikdivide::Float`
+- `effective_sample_size::Float`
+
+# Example of use
+    lld    =  SMARTloglikdivide(data.y,data.dates,overlap=h-1)
+    param  =  SMARTparam(loglikdivide=lld)
+
+"""
+function SMARTloglikdivide(y::Vector,date::Vector,overlap = 0)
+
+    overlap = Int(overlap)
+
+    dates  = unique(date)
+    y      = y .- mean(y)
+    ssc       = 0.0
+
+    for d in dates
+        ssc   = ssc + (sum(y[d.==date]))^2
+    end
+
+    loglikdivide  = ssc/sum(y.^2)   # roughly accounts for cross-correlation as in clustered standard errors.
+
+    if loglikdivide<0.9
+        @warn "loglikdivide is calculated to be $loglikdivide (excluding any overlap). Numbers smaller than one imply negative cross-correlation, perhaps induced by output transformation (e.g. from y to rank(y)).
+        loglikvidide WILL BE SET TO 1.0 by default. If the negative cross-correlation is genuine, the original value of $loglikdivide can be used, which would imply weaker priors."
+        loglikdivide = 1.0
+    end
+
+    loglikdivide  = loglikdivide*( 1 + overlap/2 ) # roughly accounts for auto-correlation induced by overlapping, e.g. y(t) = p(t+h) - p(t)
+
+   return loglikdivide
+end
+
+
+"""
     SMARTbst(data::SMARTdata, param::SMARTparam)
 SMARTboost fit, number of trees defined by param.ntrees, not cross-validated.
 
@@ -302,9 +353,12 @@ For feature i, computes f(x_i) for x_i between q1st and 1-q1st quantile, with al
     fnames,fi,fnames_sorted,fi_sorted,sortedindx = SMARTrelevance(output.SMARTtrees,data,verbose=false)
     q,pdp  = SMARTpartialplot(data,output.SMARTtrees,sortedindx[1,2],q1st=0.001)
 """
-function SMARTpartialplot(data::SMARTdata,SMARTtrees::SMARTboostTrees,features::Vector{Int64};other_xs::Vector =[],q1st=0.01,npoints = 1000)
+function SMARTpartialplot(data::SMARTdata,SMARTtrees::SMARTboostTrees,features;other_xs::Vector =[],q1st=0.01,npoints = 1000)
 
-    npoints = Int(npoints)
+    I = typeof(SMARTtrees.param.ntrees)
+    features = I.(features)
+    npoints = I(npoints)
+
     T = typeof(SMARTtrees.param.lambda)
 
     if length(other_xs)==0
@@ -361,8 +415,9 @@ APPROXIMATE Computation of marginal effects using NUMERICAL derivatives.
 """
 function SMARTmarginaleffect(data::SMARTdata,SMARTtrees::SMARTboostTrees,features;other_xs::Vector =[],q1st=0.01,npoints = 50)
 
-    npoints = Int(npoints)
-    features = Int.(features)
+    I = typeof(SMARTtrees.param.ntrees)
+    features = I.(features)
+    npoints = I(npoints)
 
     # compute a numerical derivative
     q,pdp   = SMARTpartialplot(data,SMARTtrees,features,other_xs = other_xs,q1st = q1st,npoints = npoints+2)
