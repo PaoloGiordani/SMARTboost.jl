@@ -404,7 +404,7 @@ function preparedataSMART(data,param)
     end
 
     stdx = stdx.*( stdx.> T(0.0) ) .+ median(vec(stdx)).*( stdx.== T(0.0) )    # takes care of some features being degenerate (only zeros)
-    data_standardized = SMARTdata(data.y,(data.x .- meanx)./stdx,param,data.dates,weights=data.weights)
+    data_standardized = SMARTdata(data.y,(data.x .- meanx)./stdx,param,data.dates)
 
     return data_standardized,meanx,stdx
 end
