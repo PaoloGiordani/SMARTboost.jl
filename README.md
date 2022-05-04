@@ -4,9 +4,11 @@
 
 A Julia implementation of SMARTboost (Smooth Additive Regression Trees), as described in the paper [SMARTboost learning for tabular data](https://ssrn.com/abstract=3975543).
 
-Currently support only L2 loss, but extensions will be provided soon.
+The R version (via JuliaConnectoR) is available [here.](https://github.com/PaoloGiordani/SMARTboost) 
 
-Input features can be a be `Array{Float64/Float32}` or DataFrame (which is internally converted to a matrix of floats.)
+Currently support only L2 loss, but extensions are planned. 
+
+Input features can be `Array{Float64/Float32}` or DataFrame.
 
 ## Installation
 
