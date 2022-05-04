@@ -99,6 +99,13 @@ function gridmatrixμ(x::AbstractMatrix{T},npoints::Int; tol = 0.005, maxiter::I
         dichotomous[i] = length(unique(x[:,i]))==2
         if dichotomous[i] == false
             mgrid[:,i] = quantile(unique(x[:,i]),[i for i = 1/(npoints+1):1/(npoints+1):1-1/(npoints+1)])
+            u = unique(mgrid[:,i])
+            lu = length(u)
+            if lu<=3  #
+                mgrid[1:lu,i] = u[1:lu]
+                mgrid[lu+1:end,i] = quantile(unique(x[:,i]),[i for i = 1/(npoints+1-lu):1/(npoints+1-lu):1-1/(npoints+1-lu)])
+            end
+
             #=
             # NOTE: Clustering.jl is not currently a dependency of SMARTboost
             if fuzzy==true
@@ -377,30 +384,31 @@ function refineOptim(r::AbstractVector{T},h::AbstractVector{T},G0::AbstractArray
 end
 
 
-# Preliminary operations on data before starting boosting loop: standardize x using robust measures of dispersion
+# Preliminary operations on data before starting boosting loop: standardize x using robust measures of dispersion.
+# In the first version of the paper and code, I computed the robust std only on non-zero values, now I computed on all values,
+# which implies a prior of sharper, less smooth functions on features with lots of zeros.
 function preparedataSMART(data,param)
 
     T     = typeof(param.varμ)
     meanx = T.(mean(data.x,dims=1))  # changed to mean for continuous features
     stdx  = std(data.x,dims=1)    # this alone is very poor with sparse data in combinations with default priors on mu and tau (x/stdx becomes very large)
 
-    # std computed only on non-zero data (smaller than 0.0001*std is considered zero)
     for i in 1:size(data.x)[2]
         if length(unique(data.x[:,i]))>2     # with 0-1 data, stdx = 0 when computed on non-zero data.
             meanx[i] = T(median(data.x[:,i]))  # median rather than mean
-            zerothres = T(0.0001*stdx[i])
             xi        = data.x[:,i]
-            xi        = xi[abs.(xi) .> zerothres]  # selects non-zero values
+            #zerothres = T(0.0001*stdx[i])           # Old versions: selects non-zero values
+            #xi        = xi[abs.(xi) .> zerothres]  # Old versions: selects non-zero values
             stdx[i]   = 1.42*median( abs.( xi .- meanx[i]) )  # NOTE: use of robust measure of std, not std, and computed only on non-zero values
         end
     end
 
     stdx = stdx.*( stdx.> T(0.0) ) .+ median(vec(stdx)).*( stdx.== T(0.0) )    # takes care of some features being degenerate (only zeros)
-    data_standardized = SMARTdata(data.y,(data.x .- meanx)./stdx,param,data.dates,fdgp=data.fdgp)
+    data_standardized = SMARTdata(data.y,(data.x .- meanx)./stdx,param,data.dates,weights=data.weights)
 
     return data_standardized,meanx,stdx
 end
-
+                                                                              
 
 # data.x is now assumed already standardized
 function preparegridsSMART(data,param)
