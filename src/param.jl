@@ -120,7 +120,7 @@ Parameters for SMARTboost
 """
 function SMARTparam(;
 
-    T::Type = Float32,   # Float32 or Float64. Float32 is up to twice as fast for sufficiently large n (due not to faster computations, but faster copying and storing)
+    T = Float32,   # Float32 or Float64. Float32 is up to twice as fast for sufficiently large n (due not to faster computations, but faster copying and storing)
     loss = :L2,            # loss function
     coeff = coeff_loss(loss),      # coefficients (if any) used in loss
     verbose = :Off,      # level of verbosity, :On, :Off
@@ -166,6 +166,7 @@ function SMARTparam(;
     overlap = 0)
 
     I = typeof(1)
+    if typeof(T)!==DataType; if T=="Float32"; T=Float32; else; T = Float64; end; end;  # for R users
 
     @assert(doflnτ>T(2), " doflnτ must be greater than 2.0 (for variance to be defined) ")
     @assert(T(0) <= R2p < T(0.99), " R2p must be between 0.0 and 0.99 ")
