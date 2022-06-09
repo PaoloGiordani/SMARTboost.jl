@@ -12,7 +12,7 @@
 #  POST-ESTIMATION ANALYSIS
 #  SMARTrelevance          computes feature importance (Breiman et al 1984 relevance)
 #  SMARTpartialplot        partial dependence plots (keeping all other features fixed, not integrating out)
-#  SMARTmarginaleffects    provisional! Numerical computation of marginal effects.
+#  SMARTmarginaleffect     provisional! Numerical computation of marginal effects.
 #
 
 """
@@ -41,7 +41,7 @@ by overlapping observation when y(t) = Y(t+horizon) - Y(t).
 function SMARTloglikdivide(df::DataFrame,y_symbol,date_symbol;overlap = 0)
 
     overlap = Int(overlap); y_symbol = Symbol(y_symbol); date_symbol = Symbol(date_symbol)  # required by R wrapper
-    
+
     dates             = unique(df.date)
     y                 = df[:,y_symbol] .- mean(df[:,y_symbol])
     ssc       = 0.0
@@ -51,7 +51,7 @@ function SMARTloglikdivide(df::DataFrame,y_symbol,date_symbol;overlap = 0)
     end
 
     loglikdivide  = ssc/sum(y.^2)   # roughly accounts for cross-correlation as in clustered standard errors.
-    
+
     if loglikdivide<0.9
       @warn "loglikdivide is calculated to be $loglikdivide (excluding any overlap). Numbers smaller than one imply negative cross-correlation, perhaps induced by output transformation (e.g. from y to rank(y)).
       loglikvidide WILL BE SET TO 1.0 by default. If the negative cross-correlation is genuine, the original value of $loglikdivide can be used, which would imply weaker priors."
@@ -159,17 +159,17 @@ end
 Forecasts from SMARTboost
 
 # Inputs
-- `x`                           (n,p) matrix of forecast origins (type<:real)
+- `x`                           (n,p) matrix of forecast origins (type<:real) or p vector of forecast origin
 - `SMARTtrees::SMARTboostTrees` from previously fitted SMARTbst or SMARTfit
 
 # Output
-- `yfit`                        (n) vector of forecasts of y (or, outside regression, of the natural parameter)
+- `yfit`                        (n) vector of forecasts of y (or, outside regression, of the natural parameter), or scalar forecast if n = 1
 
 # Example of use
     output = SMARTfit(data,param)
     yf     = SMARTpredict(x_oos,output.SMARTtrees)
 """
-function SMARTpredict(x,SMARTtrees::SMARTboostTrees)
+function SMARTpredict(x::AbstractMatrix,SMARTtrees::SMARTboostTrees)
 
     T       = typeof(SMARTtrees.gamma0)
     x       = convert(Matrix{T},x)
@@ -184,6 +184,17 @@ function SMARTpredict(x,SMARTtrees::SMARTboostTrees)
 
     return gammafit
 end
+
+function SMARTpredict(x::AbstractVector,SMARTtrees::SMARTboostTrees)
+
+    T       = typeof(SMARTtrees.gamma0)
+    xm      = Matrix{T}(undef,1,length(x))
+    xm[1,:] = x
+    gammafit = SMARTpredict(xm,SMARTtrees)
+
+    return gammafit[1]
+end
+
 
 
 
@@ -227,7 +238,7 @@ function SMARTfit( data::SMARTdata, param::SMARTparam;paramfield = :depth, cv_gr
     lossf = :default, nofullsample::Bool = false, stopwhenlossup::Bool=false )
 
     paramfield = Symbol(paramfield); lossf = Symbol(lossf)  # required by R wrapper
-    
+
     T = typeof(param.varμ)
     I = typeof(param.nfold)
 
@@ -385,8 +396,8 @@ end
 
 
 """
-    SMARTmarginaleffect(data::SMARTdata,SMARTtrees::SMARTboostTrees,features::Vector{Int64};other_xs::Vector =[],q1st=0.01,npoints=50)
-APPROXIMATE Computation of marginal effects using NUMERICAL derivatives.
+    SMARTmarginaleffect(data::SMARTdata,SMARTtrees::SMARTboostTrees,features::Vector{Int64};other_xs::Vector =[],q1st=0.01,npoints=50,epsilon=0.01)
+APPROXIMATE Computation of marginal effects using NUMERICAL derivatives (default ϵ=0.01)
 
 # Inputs
 
@@ -396,23 +407,30 @@ APPROXIMATE Computation of marginal effects using NUMERICAL derivatives.
 - `other_xs::Vector{Float}`      (keyword), a size(data.x)[1] vector of values at which to evaluate the marginal effect. []
 - `q1st::Float`                  (keyword) first quantile to compute, e.g. 0.001. Last quantile is 1-q1st. [0.01]
 - `npoints::Int'                 (keyword) number of points at which to evalute df(x_i)/dx_i. [50]
+- `epsilon::Float'               (keyword) epsilon for numerical derivative, [0.01]
 
 # Output
-- `q::Matrix`                   (npoints,length(features)), values of x_i at which f(x_i) is evaluated
-- `d::Matrix`                   (npoints,length(features)), values of marginal effects
+- `q::Matrix`                   (npoints,length(features)), values of x_i at which f(x_i) is evaluated, or vector if npoints = 1
+- `d::Matrix`                   (npoints,length(features)), values of marginal effects, or vector if npoints = 1
 
 # NOTE: Provisional! APPROXIMATE Computation of marginal effects using NUMERICAL derivatives.
 
+# NOTE: To compute marginal effect at one point x0 rather than over a grid, set npoints = 1 and other_xs = x0 (a p vector, p the number of features)
+
 # Example
     output = SMARTfit(data,param)
-    q,d    = SMARTmarginaleffect(data,output.SMARTtrees,[1,3])
+    q,m    = SMARTmarginaleffect(data,output.SMARTtrees,[1,3])
+
+# Example
+    q,m  = SMARTmarginaleffect(data,output.SMARTtrees,[1,2,3,4],other_xs = zeros(p),npoints = 1)
 
 # Example
     output = SMARTfit(data,param)
     fnames,fi,fnames_sorted,fi_sorted,sortedindx = SMARTrelevance(output.SMARTtrees,data,verbose=false)
-    q,pdp  = SMARTmarginaleffect(data,output.SMARTtrees,sortedindx[1,2],q1st=0.001)
+    q,m  = SMARTmarginaleffect(data,output.SMARTtrees,sortedindx[1,2],q1st=0.001)
 
 """
+#=
 function SMARTmarginaleffect(data::SMARTdata,SMARTtrees::SMARTboostTrees,features;other_xs::Vector =[],q1st=0.01,npoints = 50)
 
     I = typeof(SMARTtrees.param.ntrees)
@@ -425,4 +443,44 @@ function SMARTmarginaleffect(data::SMARTdata,SMARTtrees::SMARTboostTrees,feature
     d       = (pdp[1:n-2,:] - pdp[3:n,:])./(q[1:n-2,:] - q[3:n,:] )  # numerical derivatives at q[i]: f(q[i+1]-f(q[i-1])/(q[i+1]-q[i-1]) )
 
     return q[2:n-1,:],d
+end
+=#
+
+
+function SMARTmarginaleffect(data::SMARTdata,SMARTtrees::SMARTboostTrees,features;other_xs::Vector =[],q1st=0.01,npoints = 50,epsilon=0.01)
+
+    I = typeof(SMARTtrees.param.ntrees)
+    T = typeof(SMARTtrees.param.lambda)
+    features = I.(features)
+    npoints = I(npoints)
+
+    # compute a numerical derivative
+    if npoints==1
+
+        if length(other_xs)==0
+            other_xs =  T.(mean(data.x,dims=1))
+        else
+            other_xs  = T.(other_xs')
+        end
+
+        d   = Vector{T}(undef,length(features))
+        q   = Vector{T}(undef,length(features))
+
+        for (i,f) in enumerate(features)
+            q[i] = other_xs[f]
+            h1 = copy(other_xs)
+            h2 = copy(other_xs)
+            h1[f] = h1[f] + T(epsilon)
+            h2[f] = h2[f] - T(epsilon)
+            d[i] = (( SMARTpredict(h1,SMARTtrees) - SMARTpredict(h2,SMARTtrees) )/T(2*epsilon))[1]
+        end
+        return q,d
+
+    else
+        q,pdp   = SMARTpartialplot(data,SMARTtrees,features,other_xs = other_xs,q1st = q1st,npoints = npoints+2)
+        n       = size(q,1)
+        d       = (pdp[1:n-2,:] - pdp[3:n,:])./(q[1:n-2,:] - q[3:n,:] )  # numerical derivatives at q[i]: f(q[i+1]-f(q[i-1])/(q[i+1]-q[i-1]) )
+        return q[2:n-1,:],d
+    end
+
 end
