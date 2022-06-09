@@ -64,13 +64,12 @@ mutable struct SMARTparam{T<:AbstractFloat, I<:Int}
 end
 
 struct SMARTdata{T<:AbstractFloat,D<:Any}
-    y::Vector{T}
-    x::Matrix{T}
+    y::SharedVector{T}
+    x::SharedMatrix{T}
     dates::Vector{D}
     fdgp::Vector{T}   # fdgp (n) vector of true E(y|x), for simulations with known data-generating-process
     fnames::Vector{String}
 end
-
 
 """
     SMARTparam(;)
@@ -167,7 +166,7 @@ function SMARTparam(;
     overlap = 0)
 
     I = typeof(1)
-    
+
     @assert(doflnτ>T(2), " doflnτ must be greater than 2.0 (for variance to be defined) ")
     @assert(T(0) <= R2p < T(0.99), " R2p must be between 0.0 and 0.99 ")
     @assert(T(1e-20) < xtolOptim, "xtolOptim must be positive ")
@@ -183,7 +182,7 @@ function SMARTparam(;
 
     param = SMARTparam( loss,T.(coeff),Symbol(verbose),randomizecv,I(nfold),T(sharevalidation),T(stderulestop),stopwhenlossup,T(lambda),I(depth),Symbol(sigmoid),
         T(meanlnτ),T(varlnτ),T(doflnτ),T(varμ),T(dofμ),T(subsamplesharevs),subsamplefinalbeta,T(subsampleshare_columns),I(μgridpoints),I(τgridpoints),refineOptimGrid,T(xtolOptim),optimizevs,sharptree,I(ntrees),T(R2p),I(p0),T(loglikdivide),I(overlap) )
-    
+
     return param
 end
 
@@ -240,12 +239,13 @@ function SMARTdata(y::AbstractVector,x::Union{AbstractVector,AbstractMatrix,Abst
     end
 
     if typeof(x)<:AbstractDataFrame
-        data = SMARTdata(T.(y),convert_df_matrix(x,T),dates,T.(fdgp),fnames)
+        data = SMARTdata(SharedVector(T.(y)),SharedMatrix(convert_df_matrix(x,T)),dates,T.(fdgp),fnames)
     elseif typeof(x)<:AbstractVector
-        data = SMARTdata(T.(y),convert(Matrix{T},reshape(x,length(x),1)),dates,T.(fdgp),fnames)
+        data = SMARTdata(SharedVector(T.(y)),SharedMatrix(convert(Matrix{T},reshape(x,length(x),1))),dates,T.(fdgp),fnames)
     elseif typeof(x)<:AbstractMatrix
-        data = SMARTdata(T.(y),convert(Matrix{T},x),dates,T.(fdgp),fnames)
+        data = SMARTdata(SharedVector(T.(y)),SharedMatrix(convert(Matrix{T},x)),dates,T.(fdgp),fnames)
     end
+
 
     return data
 end
