@@ -98,9 +98,9 @@ for i in 1:4
 
   other_xs    = vec(mean(data.x,dims=1))
   q,pdp_med  = SMARTpartialplot(data,output.SMARTtrees,[i],q1st=0.01,npoints = 5000,other_xs=other_xs)
-  other_xs[j] = quantile(x[:,j],0.9) # other_xs[j] = maximum(x[:,j])
+  other_xs[j] = quantile(data.x[:,j],0.9) # other_xs[j] = maximum(data.x[:,j])
   q,pdp_high  = SMARTpartialplot(data,output.SMARTtrees,[i],q1st=0.01,npoints = 5000,other_xs=other_xs)
-  other_xs[j] = quantile(x[:,j],0.1) # other_xs[j] = minimum(x[:,j])
+  other_xs[j] = quantile(data.x[:,j],0.1) # other_xs[j] = minimum(data.x[:,j])
   q,pdp_low  = SMARTpartialplot(data,output.SMARTtrees,[i],q1st=0.01,npoints = 5000,other_xs=other_xs)
 
   pdp  = hcat(pdp_med,pdp_high,pdp_low)
@@ -130,9 +130,9 @@ for i in 1:4
   other_xs    = vec(mean(data.x,dims=1))
   npoints     = 200
   q,me_med  = SMARTmarginaleffect(data,output.SMARTtrees,[i],q1st=0.01,npoints = npoints,other_xs=other_xs)
-  other_xs[j] = quantile(x[:,j],0.9) # other_xs[j] = maximum(x[:,j])
+  other_xs[j] = quantile(data.x[:,j],0.9) # other_xs[j] = maximum(data.x[:,j])
   q,me_high  = SMARTmarginaleffect(data,output.SMARTtrees,[i],q1st=0.01,npoints = npoints,other_xs=other_xs)
-  other_xs[j] = quantile(x[:,j],0.1) # other_xs[j] = minimum(x[:,j])
+  other_xs[j] = quantile(data.x[:,j],0.1) # other_xs[j] = minimum(data.x[:,j])
   q,me_low  = SMARTmarginaleffect(data,output.SMARTtrees,[i],q1st=0.01,npoints = npoints,other_xs=other_xs)
 
   me  = hcat(me_med,me_high,me_low)
