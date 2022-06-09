@@ -99,6 +99,9 @@ fnames,fi,fnames_sorted,fi_sorted,sortedindx = SMARTrelevance(output.SMARTtrees,
 q,pdp  = SMARTpartialplot(data,output.SMARTtrees,[1,2,3,4])
 qm,me  = SMARTmarginaleffect(data,output.SMARTtrees,[1,2,3,4],npoints = 40)
 
+# To compute marginal effect at one point x0 rather than over a grid, set npoints = 1 and other_xs = x0 (a p vector, p the number of features), e.g.
+# qm,me  = SMARTmarginaleffect(data,output.SMARTtrees,[1,2,3,4],other_xs=x0,npoints = 1)
+
 # plot partial dependence
 ![](figures/Example1.png)
 
