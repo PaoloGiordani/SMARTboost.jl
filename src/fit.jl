@@ -309,7 +309,7 @@ end
 
 
 
-function loopfeatures(r::AbstractVector{T},h::AbstractVector{T},G0::AbstractArray{T},x::AbstractMatrix{T},ifit,infeatures,μgrid::AbstractArray{T},dichotomous,τgrid::AbstractVector{T},param::SMARTparam,
+function loopfeatures(r::AbstractVector{T},h::AbstractVector{T},G0::AbstractArray{T},x::SharedMatrix{T},ifit,infeatures,μgrid::AbstractArray{T},dichotomous,τgrid::AbstractVector{T},param::SMARTparam,
     varϵ::T,G::AbstractMatrix{T})::AbstractArray{T} where T<:AbstractFloat
 
     p           = size(x,2)
@@ -448,9 +448,9 @@ function fit_one_tree(r::AbstractVector{T},h::AbstractVector{T},x::AbstractArray
             outputarray = loopfeatures(r,h,G0,x,ifit,infeaturesfit,μgrid,dichotomous,τgrid,param,varϵ,G)  # loops over all variables
         else            # Variable selection using a random sub-set of the sample. All the sample is then used in refinement.
             if length(h)==1
-                outputarray = loopfeatures(r[ssi],h,G0[ssi,:],x[ssi,:],ifit,infeaturesfit,μgrid,dichotomous,τgrid,param,varϵ,G[ssi,:])  # loops over all variables
+                outputarray = loopfeatures(r[ssi],h,G0[ssi,:],SharedMatrix(x[ssi,:]),ifit,infeaturesfit,μgrid,dichotomous,τgrid,param,varϵ,G[ssi,:])  # loops over all variables
             else
-                outputarray = loopfeatures(r[ssi],h[ssi],G0[ssi,:],x[ssi,:],ifit,infeaturesfit,μgrid,dichotomous,τgrid,param,varϵ,G[ssi,:])  # loops over all variables
+                outputarray = loopfeatures(r[ssi],h[ssi],G0[ssi,:],SharedMatrix(x[ssi,:]),ifit,infeaturesfit,μgrid,dichotomous,τgrid,param,varϵ,G[ssi,:])  # loops over all variables
             end
         end
 
@@ -462,12 +462,12 @@ function fit_one_tree(r::AbstractVector{T},h::AbstractVector{T},x::AbstractArray
         # refine optimization, after variable selection
         if param.subsamplesharevs<T(1.0) && param.subsamplefinalbeta==true
             if length(h)==1
-                loss,τ,μ,Gr = refineOptim(r[ssi],h,G0[ssi,:],x[ssi,i],infeaturesfit,dichotomous,μ0,dichotomous[i],τ0,param,varϵ,G[ssi,:])
+                loss,τ,μ,Gr = refineOptim(r[ssi],h,G0[ssi,:],SharedVector(x[ssi,i]),infeaturesfit,dichotomous,μ0,dichotomous[i],τ0,param,varϵ,G[ssi,:])
             else
-                loss,τ,μ,Gr = refineOptim(r[ssi],h[ssi],G0[ssi,:],x[ssi,i],infeaturesfit,dichotomous,μ0,dichotomous[i],τ0,param,varϵ,G[ssi,:])
+                loss,τ,μ,Gr = refineOptim(r[ssi],h[ssi],G0[ssi,:],SharedVector(x[ssi,i]),infeaturesfit,dichotomous,μ0,dichotomous[i],τ0,param,varϵ,G[ssi,:])
             end
         else
-            loss,τ,μ,Gr = refineOptim(r,h,G0,x[:,i],infeaturesfit,dichotomous,μ0,dichotomous[i],τ0,param,varϵ,G)
+            loss,τ,μ,Gr = refineOptim(r,h,G0,SharedVector(x[ssi,i]),infeaturesfit,dichotomous,μ0,dichotomous[i],τ0,param,varϵ,G)
         end
 
         # compute yfit, β at optimized τ,μ, on the full sample
