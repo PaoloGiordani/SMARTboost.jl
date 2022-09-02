@@ -228,7 +228,7 @@ function SMARTsequentialcv( data::SMARTdata, param::SMARTparam; lossf::Symbol = 
 
             indtrain,indtest,meanx,stdx,n_train,p,τgrid,μgrid,dichotomous  = t_a[nf]
 
-            x_train = (data.x[indtrain,:] .- meanx)./stdx  # wasteful to do this over i .... avoids storing additional large matrices though
+            x_train = SharedMatrix((data.x[indtrain,:] .- meanx)./stdx)  # wasteful to do this over i .... avoids storing additional large matrices though
             x_test  = (data.x[indtest,:] .- meanx)./stdx
 
             SMARTtrees_a[nf],ij,μj,τj,βj = add_tree(i,SMARTtrees_a[nf],rh_a[nf],x_train,μgrid,dichotomous,τgrid)
