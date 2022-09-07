@@ -278,13 +278,16 @@ function add_depth(t)
     T = typeof(t.varϵ)
     lossmatrix = fill(T(Inf64),length(t.τgrid),length(t.μgridi))
 
+    n,p = size(t.G0)
+    G   = Matrix{T}(undef,n,2*p)
+
     if t.dichotomous_i==true   # no optimization needed
-        loss = Gfitβ(t.r,t.h,t.G0,t.xi,t.param,t.varϵ,t.infeaturesfit,t.dichotomous,[T(0.0),T(0.0)],t.dichotomous_i,t.G)
+        loss = Gfitβ(t.r,t.h,t.G0,t.xi,t.param,t.varϵ,t.infeaturesfit,t.dichotomous,[T(0.0),T(0.0)],t.dichotomous_i,G)
         τ,μ  = T(999.9), T(0.0)
     else
         for (indexμ,μ) in enumerate(t.μgridi)
             for (indexτ,τ) in enumerate(t.τgrid)
-                lossmatrix[indexτ,indexμ] = Gfitβ(t.r,t.h,t.G0,t.xi,t.param,t.varϵ,t.infeaturesfit,t.dichotomous,[μ,log(τ)],t.dichotomous_i,t.G)
+                lossmatrix[indexτ,indexμ] = Gfitβ(t.r,t.h,t.G0,t.xi,t.param,t.varϵ,t.infeaturesfit,t.dichotomous,[μ,log(τ)],t.dichotomous_i,G)
                 if indexτ>1 && (lossmatrix[indexτ,indexμ])>(lossmatrix[indexτ-1,indexμ]); break; end  #  if loss increases, break loop over tau (reduces computation costs by some 25%)
             end
         end
@@ -297,7 +300,7 @@ function add_depth(t)
         # Optionally, further optimize over μ. Perhaps needed for highly nonlinear functions.
         if t.param.optimizevs==true
             μ0   = [μ]
-            res  = Optim.optimize( μ -> Gfitβ2(t.r,t.h,t.G0,t.xi,t.param,t.varϵ,t.infeaturesfit,t.dichotomous,μ,τ,t.dichotomous_i,t.G),μ0,Optim.BFGS(linesearch = LineSearches.BackTracking()), Optim.Options(iterations = 100,x_tol = t.param.xtolOptim))
+            res  = Optim.optimize( μ -> Gfitβ2(t.r,t.h,t.G0,t.xi,t.param,t.varϵ,t.infeaturesfit,t.dichotomous,μ,τ,t.dichotomous_i,G),μ0,Optim.BFGS(linesearch = LineSearches.BackTracking()), Optim.Options(iterations = 100,x_tol = t.param.xtolOptim))
             loss = res.minimum
             μ    = res.minimizer[1]
         end
@@ -310,7 +313,7 @@ end
 
 
 function loopfeatures(r::AbstractVector{T},h::AbstractVector{T},G0::AbstractArray{T},x::SharedMatrix{T},ifit,infeatures,μgrid::AbstractArray{T},dichotomous,τgrid::AbstractVector{T},param::SMARTparam,
-    varϵ::T,G::AbstractMatrix{T})::AbstractArray{T} where T<:AbstractFloat
+    varϵ::T)::AbstractArray{T} where T<:AbstractFloat
 
     p           = size(x,2)
     outputarray = SharedArray{T}(p,3)   # [loss, τ, μ]
@@ -324,7 +327,7 @@ function loopfeatures(r::AbstractVector{T},h::AbstractVector{T},G0::AbstractArra
     end
 
     @sync @distributed for i in ps
-        t   = (r=r,h=h,G0=G0,G=G,xi=x[:,i],infeaturesfit=updateinfeatures(infeatures,i),dichotomous=dichotomous,μgridi=μgrid[:,i],dichotomous_i=dichotomous[i],τgrid=τgrid,param=param,varϵ=varϵ)
+        t   = (r=r,h=h,G0=G0,xi=x[:,i],infeaturesfit=updateinfeatures(infeatures,i),dichotomous=dichotomous,μgridi=μgrid[:,i],dichotomous_i=dichotomous[i],τgrid=τgrid,param=param,varϵ=varϵ)
         outputarray[i,:] = add_depth(t)     # [loss, τ, μ]
     end
 
@@ -335,12 +338,13 @@ end
 
 # After completing the first step (selecting a feature), use μ0 and τ0 as starting points for a more refined optimization. Uses Optim
 function refineOptim(r::AbstractVector{T},h::AbstractVector{T},G0::AbstractArray{T},xi::AbstractVector{T},infeaturesfit::Vector{Bool},dichotomous::Vector{Bool},μ0::T,dichotomous_i::Bool,τ0::T,
-    param::SMARTparam,varϵ::T,G::AbstractMatrix{T}) where T<:AbstractFloat
+    param::SMARTparam,varϵ::T) where T<:AbstractFloat
 
     if dichotomous_i
         gL  = sigmoidf(xi,μ0,τ0,param.sigmoid,dichotomous=dichotomous_i)
-        G   = Matrix{T}(updateG_allocated(G0,gL,G))
-        loss,τ,μ = T(Inf),τ0,μ0    # only G is relevant
+        n,p = size(G0)
+        G   = Matrix{T}(updateG_allocated(G0,gL,Matrix{T}(undef,n,p*2)))
+        loss,τ,μ = T(Inf),τ0,μ0
     else
 
         # optimize tau on a grid, and mu by BFGS. If param.μgridpoints is smaller, the grid is wider
@@ -362,8 +366,7 @@ function refineOptim(r::AbstractVector{T},h::AbstractVector{T},G0::AbstractArray
         lossmatrix = fill!(lossmatrix,T(Inf))
 
         @sync @distributed for indexτ = 1:length(τgrid)
-            res  = Optim.optimize( μ -> Gfitβ2(r,h,G0,xi,param,varϵ,infeaturesfit,dichotomous,μ,τgrid[indexτ],dichotomous_i,G),[μ0],Optim.BFGS(linesearch = LineSearches.BackTracking()), Optim.Options(iterations = 100,x_tol = param.xtolOptim))
-
+            res = optimize_mutau(r,h,G0,xi,param,varϵ,infeaturesfit,dichotomous,τgrid[indexτ],dichotomous_i,μ0,T)
             lossmatrix[indexτ,1] = res.minimum
             lossmatrix[indexτ,2] = res.minimizer[1]
         end
@@ -375,12 +378,17 @@ function refineOptim(r::AbstractVector{T},h::AbstractVector{T},G0::AbstractArray
         τ     = τgrid[minindex]
         μ     = lossmatrix[minindex,2]
 
-        gL  =  sigmoidf(xi,μ,τ,param.sigmoid,dichotomous=dichotomous_i)
-        G    = Matrix{T}(updateG_allocated(G0,gL,G))
-
     end
 
-    return loss,τ,μ,G
+    return loss,τ,μ
+end
+
+# G  created here
+function optimize_mutau(r,h,G0,xi,param,varϵ,infeaturesfit,dichotomous,τ,dichotomous_i,μ0,T)
+    n,p = size(G0)
+    G   = Matrix{T}(undef,n,p*2)
+    res  = Optim.optimize( μ -> Gfitβ2(r,h,G0,xi,param,varϵ,infeaturesfit,dichotomous,μ,τ,dichotomous_i,G),[μ0],
+    Optim.BFGS(linesearch = LineSearches.BackTracking()), Optim.Options(iterations = 100,x_tol = param.xtolOptim/T(1+τ>10)  ))
 end
 
 
@@ -408,7 +416,7 @@ function preparedataSMART(data,param)
 
     return data_standardized,meanx,stdx
 end
-                                                                              
+
 
 # data.x is now assumed already standardized
 function preparegridsSMART(data,param)
@@ -441,16 +449,14 @@ function fit_one_tree(r::AbstractVector{T},h::AbstractVector{T},x::AbstractArray
 
     for depth in 1:param.depth     #  NB must extend G for this to be viable
 
-        G   = Matrix{T}(undef,n,2^depth )   # pre-allocate G
-
         # variable selection
         if param.subsamplesharevs == 1.0
-            outputarray = loopfeatures(r,h,G0,x,ifit,infeaturesfit,μgrid,dichotomous,τgrid,param,varϵ,G)  # loops over all variables
+            outputarray = loopfeatures(r,h,G0,x,ifit,infeaturesfit,μgrid,dichotomous,τgrid,param,varϵ)  # loops over all variables
         else            # Variable selection using a random sub-set of the sample. All the sample is then used in refinement.
             if length(h)==1
-                outputarray = loopfeatures(r[ssi],h,G0[ssi,:],SharedMatrix(x[ssi,:]),ifit,infeaturesfit,μgrid,dichotomous,τgrid,param,varϵ,G[ssi,:])  # loops over all variables
+                outputarray = loopfeatures(r[ssi],h,G0[ssi,:],SharedMatrix(x[ssi,:]),ifit,infeaturesfit,μgrid,dichotomous,τgrid,param,varϵ)  # loops over all variables
             else
-                outputarray = loopfeatures(r[ssi],h[ssi],G0[ssi,:],SharedMatrix(x[ssi,:]),ifit,infeaturesfit,μgrid,dichotomous,τgrid,param,varϵ,G[ssi,:])  # loops over all variables
+                outputarray = loopfeatures(r[ssi],h[ssi],G0[ssi,:],SharedMatrix(x[ssi,:]),ifit,infeaturesfit,μgrid,dichotomous,τgrid,param,varϵ)  # loops over all variables
             end
         end
 
@@ -462,17 +468,17 @@ function fit_one_tree(r::AbstractVector{T},h::AbstractVector{T},x::AbstractArray
         # refine optimization, after variable selection
         if param.subsamplesharevs<T(1.0) && param.subsamplefinalbeta==true
             if length(h)==1
-                loss,τ,μ,Gr = refineOptim(r[ssi],h,G0[ssi,:],SharedVector(x[ssi,i]),infeaturesfit,dichotomous,μ0,dichotomous[i],τ0,param,varϵ,G[ssi,:])
+                loss,τ,μ = refineOptim(r[ssi],h,G0[ssi,:],SharedVector(x[ssi,i]),infeaturesfit,dichotomous,μ0,dichotomous[i],τ0,param,varϵ)
             else
-                loss,τ,μ,Gr = refineOptim(r[ssi],h[ssi],G0[ssi,:],SharedVector(x[ssi,i]),infeaturesfit,dichotomous,μ0,dichotomous[i],τ0,param,varϵ,G[ssi,:])
+                loss,τ,μ = refineOptim(r[ssi],h[ssi],G0[ssi,:],SharedVector(x[ssi,i]),infeaturesfit,dichotomous,μ0,dichotomous[i],τ0,param,varϵ)
             end
         else
-            loss,τ,μ,Gr = refineOptim(r,h,G0,SharedVector(x[ssi,i]),infeaturesfit,dichotomous,μ0,dichotomous[i],τ0,param,varϵ,G)
+            loss,τ,μ = refineOptim(r,h,G0,SharedVector(x[ssi,i]),infeaturesfit,dichotomous,μ0,dichotomous[i],τ0,param,varϵ)
         end
 
         # compute yfit, β at optimized τ,μ, on the full sample
         gL  = sigmoidf(x[:,i],μ,τ,param.sigmoid,dichotomous=dichotomous[i])
-        G   = updateG_allocated(G0,gL,G)
+        G   = updateG_allocated(G0,gL,Matrix{T}(undef,n,2^depth))
 
         loss,yfit,β = fitβ(r,h,G,param,varϵ,infeaturesfit,dichotomous,μ,τ,dichotomous[i])
 
