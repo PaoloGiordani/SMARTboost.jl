@@ -397,26 +397,31 @@ end
 # which implies a prior of sharper, less smooth functions on features with lots of zeros.
 function preparedataSMART(data,param)
 
+    check_admissible_data(data,param)  # check if data is admissable given param (e.g. loss)
+
     T     = typeof(param.varμ)
     meanx = T.(mean(data.x,dims=1))  # changed to mean for continuous features
-    stdx  = std(data.x,dims=1)    # this alone is very poor with sparse data in combinations with default priors on mu and tau (x/stdx becomes very large)
+    stdxL2 = std(data.x,dims=1)    # this alone is very poor with sparse data in combinations with default priors on mu and tau (x/stdx becomes very large)
+    stdx  = copy(stdxL2)
 
     for i in 1:size(data.x)[2]
         if length(unique(data.x[:,i]))>2     # with 0-1 data, stdx = 0 when computed on non-zero data.
             meanx[i] = T(median(data.x[:,i]))  # median rather than mean
             xi        = data.x[:,i]
-            #zerothres = T(0.0001*stdx[i])           # Old versions: selects non-zero values
-            #xi        = xi[abs.(xi) .> zerothres]  # Old versions: selects non-zero values
-            stdx[i]   = 1.42*median( abs.( xi .- meanx[i]) )  # NOTE: use of robust measure of std, not std, and computed only on non-zero values
+            #xi        = xi[abs.(xi) .> T(0.0001*stdx[i])]  # Old versions: selects non-zero values
+            s_median   = 1.42*median( abs.( xi .- meanx[i]) ) # NOTE: use of robust measure of std, not std, and computed only on non-zero values
+            if s_median==T(0)
+                stdx[i]=stdxL2[i]
+            else
+                stdx[i]=minimum(vcat(s_median,stdxL2[i]))
+            end
         end
     end
 
-    stdx = stdx.*( stdx.> T(0.0) ) .+ median(vec(stdx)).*( stdx.== T(0.0) )    # takes care of some features being degenerate (only zeros)
-    data_standardized = SMARTdata(data.y,(data.x .- meanx)./stdx,param,data.dates)
+    data_standardized = SMARTdata(data.y,(data.x .- meanx)./stdx,param,data.dates,weights=data.weights)
 
     return data_standardized,meanx,stdx
 end
-
 
 # data.x is now assumed already standardized
 function preparegridsSMART(data,param)
