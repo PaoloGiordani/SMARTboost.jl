@@ -98,7 +98,7 @@ function gridmatrixμ(x::AbstractMatrix{T},npoints::Int; tol = 0.005, maxiter::I
     @sync @distributed for i = 1:p
         dichotomous[i] = length(unique(x[:,i]))==2
         if dichotomous[i] == false
-            mgrid[:,i] = quantile(unique(x[:,i]),[i for i = 1/(npoints+1):1/(npoints+1):1-1/(npoints+1)])
+            mgrid[:,i] = quantile(x[:,i],[i for i = 1/(npoints+1):1/(npoints+1):1-1/(npoints+1)])
             u = unique(mgrid[:,i])
             lu = length(u)
             if lu<=3  #
