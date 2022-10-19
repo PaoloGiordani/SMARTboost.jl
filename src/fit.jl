@@ -397,8 +397,6 @@ end
 # which implies a prior of sharper, less smooth functions on features with lots of zeros.
 function preparedataSMART(data,param)
 
-    check_admissible_data(data,param)  # check if data is admissable given param (e.g. loss)
-
     T     = typeof(param.varμ)
     meanx = T.(mean(data.x,dims=1))  # changed to mean for continuous features
     stdxL2 = std(data.x,dims=1)    # this alone is very poor with sparse data in combinations with default priors on mu and tau (x/stdx becomes very large)
