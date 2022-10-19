@@ -416,7 +416,7 @@ function preparedataSMART(data,param)
         end
     end
 
-    data_standardized = SMARTdata(data.y,(data.x .- meanx)./stdx,param,data.dates,weights=data.weights)
+    data_standardized = SMARTdata(data.y,(data.x .- meanx)./stdx,param,data.dates)
 
     return data_standardized,meanx,stdx
 end
