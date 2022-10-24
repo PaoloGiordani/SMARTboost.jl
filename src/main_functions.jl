@@ -267,7 +267,7 @@ function SMARTfit( data::SMARTdata, param::SMARTparam;paramfield = :depth, cv_gr
         SMARTtrees_a[i]               = SMARTtrees1st
         indtest_a                     = indtest    # same for all i
 
-        if stopwhenlossup && i>1 && meanloss_a[i]>meanloss_a[i-1]; break; end;
+        if stopwhenlossup && i>1 && lossgrid[i]>lossgrid[i-1]; break; end;
 
     end
 
