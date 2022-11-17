@@ -211,7 +211,11 @@ function fitβ(r::AbstractVector{T},h::AbstractVector{T},G::AbstractArray{T},par
     loglik  = -T(0.5)*( (sum((r .- Gβ).^2)/varϵ) )/param.loglikdivide  # loglik  = -T(0.5)*( n*T(log(2π)) + n*log(varϵ) + (sum((r .- Gβ).^2)/varϵ) )/param.loglikdivide
 
     # In a pure regularization approach logpdfβ = 0.
-    logpdfβ = -T(0.5)*( p*T(log(2π)) - log(det(Pb)) + (β'Pb*β) )
+    # general form, allows for a non-diagonal Pb, but NB requires data.y to be standardized and/or Float64, else det(Pb) becomes 0 and log()=Inf
+    #logpdfβ = -T(0.5)*( p*T(log(2π)) - log(det(Pb)) + (β'Pb*β) )
+
+    # NB: assumes Pb is pb*I.
+    logpdfβ = -T(0.5)*( p*T(log(2π)) - p*log(Pb[1,1]) + Pb[1,1]*(β'β) )
 
     if dichotomous_i
         logpdfμ, logpdfτ = T(0.0), T(0.0)
