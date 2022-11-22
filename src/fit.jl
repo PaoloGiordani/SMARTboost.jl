@@ -198,7 +198,7 @@ function fitβ(r::AbstractVector{T},h::AbstractVector{T},G::AbstractArray{T},par
            while isa(err,SingularException)
               try
                   err         = "no error"
-                  Pb          = Pb*2.01
+                  Pb          = Pb*T(2.01)
                   β           = (GGh + varϵ*param.loglikdivide*Pb )\(G'r)
               catch err
               end
