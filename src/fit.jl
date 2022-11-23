@@ -198,7 +198,7 @@ function fitβ(r::AbstractVector{T},h::AbstractVector{T},G::AbstractArray{T},par
            while isa(err,SingularException)
               try
                   err         = "no error"
-                  Pb          = Pb*T(2.01)
+                  Pb          = Pb*2.01    # 2.01 rather than T(2.01) on purpose: switch to Float64 if there are invertibility problems.
                   β           = (GGh + varϵ*param.loglikdivide*Pb )\(G'r)
               catch err
               end
@@ -229,7 +229,7 @@ function fitβ(r::AbstractVector{T},h::AbstractVector{T},G::AbstractArray{T},par
 
     loss  = -( loglik + logpdfβ + logpdfτ + logpdfμ)
 
-    return loss,Gβ,β
+    return T(loss),T.(Gβ),T.(β)
 
 end
 
