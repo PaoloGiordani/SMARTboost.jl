@@ -262,6 +262,11 @@ function SMARTsequentialcv( data::SMARTdata, param::SMARTparam; lossf::Symbol = 
     ntrees         = argmin(meanloss[1:j])
     loss           = meanloss[ntrees]
 
+    if nfold==1
+        SMARTtrees_a[1].trees = SMARTtrees_a[1].trees[1:ntrees]
+    end    
+
+                                                                                        
     return ntrees,loss,meanloss[1:j],stdeloss[1:j],SMARTtrees_a[1],indtest_a
 
 end
