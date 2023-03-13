@@ -21,7 +21,7 @@ pkg> add "https://github.com/PaoloGiordani/SMARTboost.jl"
 
 ## Parameters (incomplete list, see SMARTparam Documentation for more).
 
-- `loss`              [:L2] currently only :L2 is supported, but extensions coming soon.
+- `loss`              [:L2] currently only :L2 is supported, but extensions are planned.
 - `depth`             [4] tree depth. If not default, then typically cross-validated in SMARTfit.
 - `lambda`            [0.2] learning rate
 - `loglikdivide`      [1.0] with panel data, SMARTloglikdivide() can be used to set this parameter
