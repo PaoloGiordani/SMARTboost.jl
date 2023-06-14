@@ -392,7 +392,7 @@ function optimize_mutau(r,h,G0,xi,param,varϵ,infeaturesfit,dichotomous,τ,dicho
     n,p = size(G0)
     G   = Matrix{T}(undef,n,p*2)
     res  = Optim.optimize( μ -> Gfitβ2(r,h,G0,xi,param,varϵ,infeaturesfit,dichotomous,μ,τ,dichotomous_i,G),[μ0],
-    Optim.BFGS(linesearch = LineSearches.BackTracking()), Optim.Options(iterations = 100,x_tol = param.xtolOptim/T(1+τ>10)  ))
+    Optim.BFGS(linesearch = LineSearches.BackTracking()), Optim.Options(iterations = 100,x_tol = param.xtolOptim/T(1+(τ>10))  ))
 end
 
 
