@@ -269,7 +269,6 @@ end
 
 # For a given feature, adds one layer to a symmetric tree
 # Selects a feature using a rough grid in τ|μ and assuming that the loss if monotonic in τ|μ and then refines the optimization for the selected feature.
-# If loss increases, break loop over tau (reduces computation costs by some 25%)
 function add_depth(t)
 
     T = typeof(t.varϵ)
@@ -285,7 +284,6 @@ function add_depth(t)
         for (indexμ,μ) in enumerate(t.μgridi)
             for (indexτ,τ) in enumerate(t.τgrid)
                 lossmatrix[indexτ,indexμ] = Gfitβ(t.r,t.h,t.G0,t.xi,t.param,t.varϵ,t.infeaturesfit,t.dichotomous,[μ,log(τ)],t.dichotomous_i,G)
-                if indexτ>1 && (lossmatrix[indexτ,indexμ])>(lossmatrix[indexτ-1,indexμ]); break; end  #  if loss increases, break loop over tau (reduces computation costs by some 25%)
             end
         end
 
