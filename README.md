@@ -1,3 +1,9 @@
+## SMARTboost has been superseded by HTBoost (Hybrid Tree Boosting)!
+
+HTBoost extends SMARTboost to general loss functions (likelihoods), missing values, and categorical features. It can also deal much more effectively with irregular functions and highly non-Gaussian features. Please check HTBoost at:
+
+[HTBoost](https://github.com/PaoloGiordani/HTBoost.jl)
+
 # SMARTboost
 
 [![Build Status](https://github.com/PaoloGiordani/SMARTboost.jl/workflows/CI/badge.svg)](https://github.com/PaoloGiordani/SMARTboost.jl/actions)
